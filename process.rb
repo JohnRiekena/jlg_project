@@ -12,6 +12,7 @@ def process_csv(input_file, output_file)
   # Read the CSV and organize data by client
   CSV.foreach(input_file, headers: true) do |row|
     client_id = row[0]
+    next if client_id.nil?
     data = row.to_h
 
     # split the hash into client vs vehicle data (and map the arrays back into hashes)
@@ -29,10 +30,13 @@ def process_csv(input_file, output_file)
   max_vehicles = clients.values.map { |data| data[:vehicles].size }.max
 
   # Build the repeated header strings (make_1, make_2, etc)
-  vehicle_headers_repeated = (1..max_vehicles).map { |i| vehicle_headers.map { |header| "#{header} #{i}" } }.flatten
+  vehicle_headers_formatted = vehicle_headers
+  if max_vehicles > 1
+    vehicle_headers_formatted = (1..max_vehicles).map { |i| vehicle_headers.map { |header| "#{header} #{i}" } }.flatten
+  end
 
   # make a single array of ALL headers
-  output_headers = client_headers + vehicle_headers_repeated
+  output_headers = client_headers + vehicle_headers_formatted
 
   # Write the output CSV
   CSV.open(output_file, "w") do |csv|
