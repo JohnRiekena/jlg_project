@@ -1,13 +1,23 @@
 require 'csv'
 require 'optparse'
 
-# all possible columns that could be included to identify person
-POSSIBLE_CLIENT_KEYS = ["sfid", "first name", "last name", "address",
-                  "city", "state", "zip code", "email",
-                  "mobile phone", "sms permission"]
-
 def process_csv(input_file, output_file)
   clients = {}
+
+  all_rows = CSV.read(input_file)
+  client_keys = all_rows[0]
+  repeated = all_rows.group_by(&:first).filter { |_, v| v.count > 1 }
+
+  repeated.each do |_,v|
+    repeated_keys = []
+    client_keys.each_with_index do |k, i|
+      break unless v.all? { |row| row[i] === v[0][i] }
+      repeated_keys << k
+    end
+    # handle if client owns multiple of the same make and model
+    client_keys = repeated_keys if repeated_keys.count < client_keys.count
+  end
+
 
   # Read the CSV and organize data by client
   CSV.foreach(input_file, headers: true) do |row|
@@ -16,7 +26,7 @@ def process_csv(input_file, output_file)
     data = row.to_h
 
     # split the hash into client vs vehicle data (and map the arrays back into hashes)
-    client_data, vehicle_data = data.partition { |key, _| POSSIBLE_CLIENT_KEYS.include? key }.map(&:to_h)
+    client_data, vehicle_data = data.partition { |key, _| client_keys.include? key }.map(&:to_h)
     # add person to array if not already exists (with empty vehicles)
     clients[client_id] ||= { client_data: client_data, vehicles: [] }
     # now add vehicle data for that person
